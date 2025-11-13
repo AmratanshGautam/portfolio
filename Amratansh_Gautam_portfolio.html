@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Amratansh Gautam | The Portfolio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Italiana&family=Rajdhani:wght@300;500;700&family=Syncopate:wght@700&display=swap');
+
+        :root {
+            --void: #050505;
+            --neon: #00f3ff;
+            --alert: #ff003c;
+            --gold: #ffd700;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--void);
+            color: #e0e0e0;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- VORTEX ENGINE --- */
+        #vortex-canvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.6;
+        }
+        
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            z-index: 2;
+            pointer-events: none;
+            opacity: 0.3;
+        }
+
+        /* --- UI FRAME --- */
+        .hud-border {
+            position: fixed;
+            z-index: 50;
+            background: rgba(5,5,5,0.9);
+            backdrop-filter: blur(5px);
+            border-color: rgba(255,255,255,0.1);
+        }
+        .hud-top { top: 0; left: 0; width: 100%; height: 70px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
+        .hud-bottom { bottom: 0; left: 0; width: 100%; height: 50px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
+
+        /* --- TYPOGRAPHY --- */
+        .brand {
+            font-family: 'Syncopate', sans-serif;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 2px;
+            font-size: 1.2rem;
+        }
+        .role-tag {
+            font-size: 0.8rem;
+            color: var(--neon);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        /* --- HAMBURGER --- */
+        .menu-trigger {
+            width: 40px; height: 40px;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 6px;
+            z-index: 60;
+        }
+        .line { width: 100%; height: 2px; background: white; transition: 0.4s; }
+        .menu-trigger:hover .line { background: var(--neon); width: 100% !important; }
+        .menu-trigger .line:nth-child(2) { width: 60%; }
+        
+        .menu-trigger.active .line:nth-child(1) { transform: rotate(45deg) translate(5px, 6px); }
+        .menu-trigger.active .line:nth-child(2) { opacity: 0; }
+        .menu-trigger.active .line:nth-child(3) { transform: rotate(-45deg) translate(5px, -6px); }
+
+        /* --- FULLSCREEN MENU --- */
+        #curtain {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--void);
+            z-index: 45;
+            transform: translateX(100%);
+            transition: transform 0.6s cubic-bezier(0.7, 0, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-left: 1px solid var(--neon);
+        }
+        #curtain.open { transform: translateX(0); }
+        
+        .nav-link {
+            font-family: 'Italiana', serif;
+            font-size: clamp(2.5rem, 6vw, 5rem);
+            color: #333;
+            text-decoration: none;
+            transition: 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+        .nav-link:hover { color: white; transform: skewX(-10deg); text-shadow: 0 0 20px var(--neon); }
+
+        /* --- SCENES (CONTENT) --- */
+        #stage {
+            position: absolute;
+            top: 70px; bottom: 50px; left: 0; right: 0;
+            overflow-y: auto; /* Allow scrolling within the stage */
+            overflow-x: hidden;
+            scrollbar-width: none; /* Firefox */
+            z-index: 10;
+            scroll-behavior: smooth;
+        }
+        #stage::-webkit-scrollbar { display: none; }
+
+        .scene {
+            min-height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.8s, transform 0.8s;
+        }
+        .scene.active { display: flex; opacity: 1; transform: translateY(0); }
+
+        .hero-title {
+            font-family: 'Italiana', serif;
+            font-size: clamp(2.5rem, 8vw, 7rem); /* Responsive Clamp */
+            line-height: 0.9;
+            text-align: center;
+            margin-bottom: 20px;
+            mix-blend-mode: lighten;
+        }
+
+        /* --- AVATAR FRAME --- */
+        .avatar-frame {
+            width: 180px; height: 180px;
+            border-radius: 50%;
+            border: 2px solid var(--neon);
+            margin: 0 auto 30px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+        .avatar-frame img { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            object-position: center 20%; /* Focus on face */
+            transform: scale(1.1);
+        }
+        .avatar-frame::after {
+            content: ''; position: absolute; top:0; left:0; width:100%; height:100%;
+            background: radial-gradient(circle, transparent 55%, rgba(5,5,5,0.4) 100%);
+            pointer-events: none;
+            border-radius: 50%;
+        }
+        
+        /* --- CARDS & GRIDS --- */
+        .grid-system {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            width: 100%;
+            max-width: 1200px;
+        }
+        
+        .data-card {
+            background: rgba(20,20,20,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 25px;
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .data-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 2px; height: 0%;
+            background: var(--neon);
+            transition: 0.5s;
+        }
+        /* Hover effects only on non-touch devices */
+        @media (hover: hover) {
+            .data-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.3); }
+            .data-card:hover::before { height: 100%; }
+        }
+
+        .project-image {
+            width: 100%;
+            height: 150px;
+            background: #111;
+            margin-bottom: 15px;
+            overflow: hidden;
+            border-bottom: 1px solid #333;
+        }
+        .project-image img {
+            width: 100%; height: 100%; object-fit: cover;
+            opacity: 0.7; transition: 0.5s;
+        }
+        @media (hover: hover) {
+            .data-card:hover .project-image img { opacity: 1; transform: scale(1.05); }
+        }
+
+        .card-title { font-family: 'Syncopate'; font-weight: 700; font-size: 1.2rem; margin-bottom: 10px; color: white; }
+        .card-sub { font-size: 0.9rem; color: var(--neon); margin-bottom: 15px; display: block; text-transform: uppercase; letter-spacing: 2px; }
+        
+        .tag { 
+            display: inline-block; 
+            padding: 4px 12px; 
+            border: 1px solid #444; 
+            font-size: 0.75rem; 
+            margin: 0 5px 5px 0; 
+            color: #aaa;
+        }
+
+        /* --- 3D CERTIFICATE DECK --- */
+        .cert-deck-container {
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            position: relative;
+            perspective: 1000px;
+            margin: 0 auto;
+        }
+        .cert-card {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 15, 0.9);
+            border: 1px solid var(--neon);
+            border-radius: 10px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.6s, box-shadow 0.3s;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.1);
+            cursor: pointer;
+            transform-style: preserve-3d;
+            overflow: hidden;
+        }
+        
+        .cert-card::after {
+            content: ''; position: absolute; top:0; left:0; width:100%; height:100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0) 50%);
+            pointer-events: none;
+        }
+
+        @media (hover: hover) {
+            .cert-card:hover {
+                box-shadow: 0 0 40px rgba(0, 243, 255, 0.3);
+                border-color: white;
+            }
+        }
+        
+        .cert-icon { font-size: 4rem; color: var(--gold); margin-bottom: 20px; text-shadow: 0 0 20px var(--gold); }
+        .cert-title { font-family: 'Syncopate'; font-size: 1.4rem; color: white; margin-bottom: 10px; line-height: 1.2; }
+        .cert-issuer { font-family: 'Rajdhani'; font-size: 1.1rem; color: #bbb; letter-spacing: 2px; margin-bottom: 5px; }
+        .cert-date { font-family: 'Courier New'; font-size: 0.8rem; color: var(--neon); }
+
+        .instruction-text {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse { 0%{opacity:0.5} 50%{opacity:1} 100%{opacity:0.5} }
+
+        /* --- CURSOR (Desktop Only) --- */
+        #cursor, #cursor-follow {
+            display: none; /* Hidden by default for touch devices */
+        }
+        @media (hover: hover) and (pointer: fine) {
+            body { cursor: none; }
+            #cursor, #cursor-follow { display: block; }
+        }
+
+        #cursor {
+            position: fixed;
+            width: 12px; height: 12px;
+            border: 1px solid var(--neon);
+            transform: rotate(45deg);
+            pointer-events: none;
+            z-index: 100;
+            transition: transform 0.1s;
+        }
+        #cursor-follow {
+            position: fixed;
+            width: 40px; height: 40px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 99;
+            transition: all 0.15s ease-out;
+        }
+
+        /* --- INIT SCREEN --- */
+        #init-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 1s;
+        }
+        .glitch-btn {
+            background: transparent;
+            border: 1px solid var(--neon);
+            color: var(--neon);
+            padding: 20px 40px;
+            font-family: 'Syncopate';
+            letter-spacing: 4px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .glitch-btn:hover { background: var(--neon); color: black; box-shadow: 0 0 30px var(--neon); }
+
+        @media (max-width: 768px) {
+            .hud-top, .hud-bottom { padding: 0 15px; }
+            .brand { font-size: 1rem; }
+            .cert-deck-container { height: 350px; }
+            .cert-title { font-size: 1.1rem; }
+            .cert-icon { font-size: 3rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- START SCREEN -->
+    <div id="init-screen">
+        <button class="glitch-btn" onclick="startSystem()">ENTER THE VOID</button>
+    </div>
+
+    <!-- BACKGROUND -->
+    <div class="scanlines"></div>
+    <canvas id="vortex-canvas"></canvas>
+
+    <!-- CURSOR (Desktop Only) -->
+    <div id="cursor"></div>
+    <div id="cursor-follow"></div>
+
+    <!-- HUD TOP -->
+    <nav class="hud-border hud-top">
+        <div>
+            <div class="brand">AMRATANSH<span style="color:var(--neon)">.DEV</span></div>
+            <div class="role-tag hidden md:block">B.Tech CSE '28 // TECH & AI Enthusiast</div>
+        </div>
+        <div class="menu-trigger" onclick="toggleMenu()">
+            <div class="line"></div>
+            <div class="line"></div>
+            <div class="line"></div>
+        </div>
+    </nav>
+
+    <!-- MENU -->
+    <div id="curtain">
+        <a class="nav-link" onclick="navigate('home')">ORIGIN</a>
+        <a class="nav-link" onclick="navigate('about')">IDENTITY</a>
+        <a class="nav-link" onclick="navigate('skills')">ARSENAL</a>
+        <a class="nav-link" onclick="navigate('projects')">ARTIFACTS</a>
+        <a class="nav-link" onclick="navigate('achievements')">HONORS</a>
+        <a class="nav-link" onclick="navigate('contact')">UPLINK</a>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main id="stage">
+        
+        <!-- SCENE: HOME -->
+        <section id="home" class="scene active">
+            <div class="text-center">
+                <!-- USER AVATAR -->
+                <div class="avatar-frame">
+                    <!-- User Photo Integrated Here -->
+                    <img src="amratansh.jpg" alt="Amratansh Gautam">
+                </div>
+
+                <p class="text-gray-500 tracking-[10px] text-sm mb-4 font-syncopate">SYSTEM ONLINE</p>
+                <h1 class="hero-title">AMRATANSH<br><span style="color:var(--neon)">GAUTAM</span></h1>
+                <p class="text-xl md:text-2xl text-gray-300 font-light max-w-2xl mx-auto mt-6 leading-relaxed px-4">
+                    Web Developer. Software Engineer. <span class="text-neon">Innovator.</span><br>
+                    Crafting high-impact digital solutions from Bhopal to the World.
+                </p>
+                <div class="mt-10 flex flex-col md:flex-row gap-4 justify-center items-center px-4">
+                    <button onclick="navigate('projects')" class="px-8 py-3 border border-white hover:bg-white hover:text-black transition tracking-widest text-sm w-full md:w-auto">VIEW WORK</button>
+                    <button onclick="navigate('contact')" class="px-8 py-3 border border-neon text-neon hover:bg-neon hover:text-black transition tracking-widest text-sm w-full md:w-auto">CONTACT ME</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCENE: IDENTITY (ABOUT) -->
+        <section id="about" class="scene">
+            <h2 class="text-4xl md:text-6xl font-italian text-white mb-12 text-center">THE ENTITY</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-5xl w-full px-4">
+                <div class="data-card">
+                    <h3 class="card-title">PROFILE DATA</h3>
+                    <p class="text-gray-400 leading-loose mb-4">
+                        My name is <strong class="text-white">Amratansh Gautam</strong> (Tanshu). I am a B.Tech Computer Science student at <span class="text-neon">Technocrates Institute of Technology & Science</span>, Bhopal (Class of 2028).
+                    </p>
+                    <p class="text-gray-400 leading-loose">
+                        <strong class="text-white">Objective:</strong> To become a skilled and innovative engineer, aiming to work with top MNCs while contributing to real-world problem-solving through AI and Full-Stack Development.
+                    </p>
+                </div>
+                <div class="data-card">
+                    <h3 class="card-title">PERSONALITY KERNEL</h3>
+                    <ul class="list-disc list-inside text-gray-400 space-y-2 mt-4">
+                        <li><span class="text-white">Passionate Learner:</span> Curiosity for AI, ML, and Data Science.</li>
+                        <li><span class="text-white">Sports Enthusiast:</span> Athletics & Team Events.</li>
+                        <li><span class="text-white">Creative Mind:</span> Web Design & Content Creation.</li>
+                        <li><span class="text-white">Soft Skills:</span> Leadership, Team Collaboration, Problem Solving.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCENE: ARSENAL (SKILLS) -->
+        <section id="skills" class="scene">
+            <h2 class="text-4xl md:text-6xl font-italian text-white mb-12 text-center">ARSENAL</h2>
+            <div class="grid-system px-4">
+                <!-- Languages -->
+                <div class="data-card">
+                    <i class="fas fa-code text-3xl text-neon mb-4"></i>
+                    <h3 class="card-title">LANGUAGES</h3>
+                    <div class="flex flex-wrap mt-4">
+                        <span class="tag">C++</span>
+                        <span class="tag">Java</span>
+                        <span class="tag">Python (Deep Learning)</span>
+                        <span class="tag">JavaScript</span>
+                    </div>
+                </div>
+                <!-- Web Dev -->
+                <div class="data-card">
+                    <i class="fas fa-globe text-3xl text-neon mb-4"></i>
+                    <h3 class="card-title">WEB & TOOLS</h3>
+                    <div class="flex flex-wrap mt-4">
+                        <span class="tag">HTML5 / CSS3</span>
+                        <span class="tag">Node.js</span>
+                        <span class="tag">DOM Manipulation</span>
+                        <span class="tag">Responsive Design</span>
+                        <span class="tag">Oracle Cloud</span>
+                        <span class="tag">VS Code</span>
+                        <span class="tag">Canva</span>
+                    </div>
+                </div>
+                <!-- Academic -->
+                <div class="data-card">
+                    <i class="fas fa-book text-3xl text-neon mb-4"></i>
+                    <h3 class="card-title">ACADEMIC CORE</h3>
+                    <div class="flex flex-wrap mt-4">
+                        <span class="tag">OOPs (C++)</span>
+                        <span class="tag">SDLC</span>
+                        <span class="tag">Testing Principles</span>
+                        <span class="tag">Requirement Analysis</span>
+                        <span class="tag">Data Structure & Algo(Java)</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCENE: ARTIFACTS (PROJECTS) -->
+        <section id="projects" class="scene">
+            <h2 class="text-4xl md:text-6xl font-italian text-white mb-12 text-center">ARTIFACTS</h2>
+            <div class="grid-system px-4">
+                
+                <div class="data-card group">
+                    <div class="project-image">
+                        <img src="herbal-garden.jpg" alt="Herbal Garden">
+                    </div>
+                    <span class="card-sub">AYUSH PROJECT</span>
+                    <h3 class="card-title group-hover:text-neon transition">Virtual Herbal Garden</h3>
+                    <p class="text-sm text-gray-400 mb-4">Interactive platform showcasing medicinal plants with 3D models and virtual tours.</p>
+                </div>
+
+                <div class="data-card group">
+                    <div class="project-image">
+                        <img src="download.png" alt="Swachhta Dashboard">
+                    </div>
+                    <span class="card-sub">GOV TECH</span>
+                    <h3 class="card-title group-hover:text-neon transition">Swachhta Dashboard</h3>
+                    <p class="text-sm text-gray-400 mb-4">AI-powered dashboard for cleanliness monitoring with image processing & geolocation.</p>
+                </div>
+
+                <div class="data-card group">
+                    <div class="project-image">
+                        <img src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=1470&auto=format&fit=crop" alt="Publications Generator">
+                    </div>
+                    <span class="card-sub">SMART EDUCATION</span>
+                    <h3 class="card-title group-hover:text-neon transition">Publications Gen.</h3>
+                    <p class="text-sm text-gray-400 mb-4">Crawler for Google Scholar/DBLP to generate faculty publication summaries automatically.</p>
+                </div>
+
+                <div class="data-card group">
+                    <div class="project-image">
+                        <img src="https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1470&auto=format&fit=crop" alt="Anti-Doping Platform">
+                    </div>
+                    <span class="card-sub">SPORTS AWARENESS</span>
+                    <h3 class="card-title group-hover:text-neon transition">Anti-Doping Platform</h3>
+                    <p class="text-sm text-gray-400 mb-4">Gamified education platform for athletes and coaches regarding anti-doping regulations.</p>
+                </div>
+
+                <div class="data-card group">
+                    <div class="project-image">
+                        <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=1422&auto=format&fit=crop" alt="Finance Manager">
+                    </div>
+                    <span class="card-sub">FINTECH</span>
+                    <h3 class="card-title group-hover:text-neon transition">Finance Manager</h3>
+                    <p class="text-sm text-gray-400 mb-4">Web app for students to track income, expenses, and savings efficiently.</p>
+                    <div class="mt-2"><span class="tag">Node.js</span><span class="tag">JS</span></div>
+                </div>
+
+                <div class="data-card group">
+                    <div class="project-image">
+                        <img src="police-inventory.jpg" alt="Inventory System">
+                    </div>
+                    <span class="card-sub">M.P. POLICE</span>
+                    <h3 class="card-title group-hover:text-neon transition">Inventory System</h3>
+                    <p class="text-sm text-gray-400 mb-4">Centralized hardware asset management with real-time tracking and lifecycle management.</p>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SCENE: HONORS (ACHIEVEMENTS & CERTIFICATES) -->
+        <section id="achievements" class="scene">
+            <h2 class="text-4xl md:text-6xl font-italian text-white mb-8 text-center">HONORS</h2>
+            
+            <!-- BOOK OF CERTIFICATES -->
+            <div class="w-full text-center mb-12 px-4">
+                <p class="text-neon text-lg tracking-widest mb-6 font-syncopate">CERTIFIED MASTERY</p>
+                
+                <div class="cert-deck-container" id="certDeck">
+                    <!-- Generated by JS -->
+                </div>
+                <p class="instruction-text">[ CLICK/TAP CARD TO REVEAL NEXT ]</p>
+            </div>
+
+            <!-- OTHER AWARDS -->
+            <div class="max-w-4xl w-full space-y-6 mt-12 px-4">
+                 <h3 class="text-2xl font-italian text-white mb-6 border-b border-gray-800 pb-2">COMPETITIVE AWARDS</h3>
+
+                <!-- Gold Medal -->
+                <div class="flex items-center border border-gray-800 bg-gray-900/50 p-4 rounded hover:border-gold transition">
+                    <div class="text-3xl text-gold mr-6"><i class="fas fa-medal"></i></div>
+                    <div>
+                        <h3 class="text-xl text-white font-bold">Gold Medal - RGPV Nodal</h3>
+                        <p class="text-gray-400 text-sm">Shot Put Competition</p>
+                    </div>
+                </div>
+
+                <!-- Silver Medal -->
+                <div class="flex items-center border border-gray-800 bg-gray-900/50 p-4 rounded hover:border-gray-300 transition">
+                    <div class="text-3xl text-gray-300 mr-6"><i class="fas fa-medal"></i></div>
+                    <div>
+                        <h3 class="text-xl text-white font-bold">Silver Medal - RGPV Nodal</h3>
+                        <p class="text-gray-400 text-sm">4x400m Relay Race</p>
+                    </div>
+                </div>
+
+                <!-- Coding Contest -->
+                <div class="flex items-center border border-gray-800 bg-gray-900/50 p-4 rounded hover:border-neon transition">
+                    <div class="text-3xl text-neon mr-6"><i class="fas fa-trophy"></i></div>
+                    <div>
+                        <h3 class="text-xl text-white font-bold">Coding Contest Winner</h3>
+                        <p class="text-gray-400 text-sm">Awarded Zebronics Gaming Gear</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCENE: CONTACT -->
+        <section id="contact" class="scene">
+            <h2 class="text-4xl md:text-6xl font-italian text-white mb-12 text-center">UPLINK</h2>
+            <div class="max-w-lg w-full px-4">
+                <div class="text-center mb-10 space-y-2">
+                    <a href="mailto:amratanshgautam@gmail.com" class="block text-xl text-white hover:text-neon transition break-all"><i class="fas fa-envelope text-neon mr-2"></i> amratanshgautam@gmail.com</a>
+                    <p class="text-xl text-white"><i class="fas fa-phone text-neon mr-2"></i> +91 94250 77259</p>
+                    
+                    <!-- SOCIAL LINKS IN CONTACT -->
+                    <div class="flex justify-center gap-6 mt-4">
+                        <a href="https://www.linkedin.com/in/amratansh-gautam-79b403311?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" target="_blank" rel="noopener noreferrer" class="text-2xl text-gray-400 hover:text-neon transition"><i class="fab fa-linkedin"></i></a>
+                        <a href="https://github.com/AmratanshGautam" target="_blank" rel="noopener noreferrer" class="text-2xl text-gray-400 hover:text-neon transition"><i class="fab fa-github"></i></a>
+                        <a href="https://www.instagram.com/amratansh_gautam?igsh=Zzh6cGQ2MnZkZmls" target="_blank" rel="noopener noreferrer" class="text-2xl text-gray-400 hover:text-neon transition"><i class="fab fa-instagram"></i></a>
+                    </div>
+
+                    <p class="text-sm text-gray-500 mt-4">LOCATION: BHOPAL, MP, INDIA</p>
+                </div>
+
+                <!-- Functional Contact Form -->
+                <form id="contactForm" class="space-y-6" onsubmit="sendMail(event)">
+                    <div class="relative group">
+                        <input type="text" id="senderName" class="w-full bg-transparent border-b border-gray-700 py-3 text-white outline-none focus:border-neon transition" placeholder="YOUR NAME" required>
+                    </div>
+                    <div class="relative group">
+                        <input type="text" id="senderSubject" class="w-full bg-transparent border-b border-gray-700 py-3 text-white outline-none focus:border-neon transition" placeholder="SUBJECT / REASON" required>
+                    </div>
+                    <div class="relative group">
+                        <textarea id="senderMessage" class="w-full bg-transparent border-b border-gray-700 py-3 text-white outline-none focus:border-neon transition h-32" placeholder="DATA PACKET (MESSAGE)" required></textarea>
+                    </div>
+                    <button type="submit" class="w-full py-4 bg-neon/10 border border-neon text-neon hover:bg-neon hover:text-black transition tracking-widest font-bold font-syncopate">TRANSMIT</button>
+                </form>
+            </div>
+        </section>
+        
+        <!-- SPACER FOR FOOTER -->
+        <div style="height: 80px;"></div>
+
+    </main>
+
+    <!-- HUD BOTTOM -->
+    <footer class="hud-border hud-bottom">
+        <div class="text-[10px] text-gray-500 font-syncopate hidden md:block">
+            COORD: <span id="coordinates">000.00 // 000.00</span>
+        </div>
+        <div class="flex gap-6 text-gray-400 text-lg w-full md:w-auto justify-center md:justify-end">
+            <a href="https://www.linkedin.com/in/amratansh-gautam-79b403311?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" target="_blank" rel="noopener noreferrer" class="hover:text-white transition transform hover:-translate-y-1"><i class="fab fa-linkedin"></i></a>
+            <a href="https://github.com/AmratanshGautam" target="_blank" rel="noopener noreferrer" class="hover:text-white transition transform hover:-translate-y-1"><i class="fab fa-github"></i></a>
+            <a href="https://www.instagram.com/amratansh_gautam?igsh=Zzh6cGQ2MnZkZmls" target="_blank" rel="noopener noreferrer" class="hover:text-white transition transform hover:-translate-y-1"><i class="fab fa-instagram"></i></a>
+            <a href="mailto:amratanshgautam@gmail.com" class="hover:text-white transition transform hover:-translate-y-1"><i class="fas fa-envelope"></i></a>
+        </div>
+    </footer>
+
+    <script>
+        /* ----------------------------------------------------------------
+           CERTIFICATES DATA & DECK LOGIC
+        ---------------------------------------------------------------- */
+        const certificates = [
+            {
+                title: "Oracle Certified Data Science Professional",
+                issuer: "Oracle Cloud Infrastructure 2025",
+                date: "Oct 31, 2025",
+                icon: "fa-database"
+            },
+            {
+                title: "Generative AI Professional",
+                issuer: "Oracle Cloud Infrastructure 2025",
+                date: "Oct 14, 2025",
+                icon: "fa-brain"
+            },
+            {
+                title: "AI Foundations Associate",
+                issuer: "Oracle Cloud Infrastructure 2025",
+                date: "Aug 21, 2025",
+                icon: "fa-robot"
+            },
+            {
+                title: "Software Engineering Job Simulation",
+                issuer: "JPMorgan Chase & Co / Forage",
+                date: "July 8, 2025",
+                icon: "fa-laptop-code"
+            },
+            {
+                title: "500 Difficulty Rating",
+                issuer: "CodeChef",
+                date: "Jun 19, 2025",
+                icon: "fa-code"
+            },
+            {
+                title: "Web Development Hackathon",
+                issuer: "TIT Developer Community",
+                date: "03/04/2025",
+                icon: "fa-trophy"
+            },
+            {
+                title: "Solution Challenge Participant",
+                issuer: "Google Developer Groups (GDG)",
+                date: "2025",
+                icon: "fa-lightbulb"
+            },
+            {
+                title: "Artificial Intelligence Fundamentals",
+                issuer: "IBM SkillsBuild",
+                date: "Jan 09, 2025",
+                icon: "fa-microchip"
+            },
+            {
+                title: "Node.js & Web Scraping API",
+                issuer: "SkillEcted Campus Program",
+                date: "Dec 22, 2024",
+                icon: "fa-server"
+            },
+            {
+                title: "Data Analytics Job Simulation",
+                issuer: "Accenture / Forage",
+                date: "Nov 16, 2024",
+                icon: "fa-chart-line"
+            },
+             {
+                title: "GSoc, Git & GitHub Seminar",
+                issuer: "Developers Club",
+                date: "Participation",
+                icon: "fa-github"
+            }
+        ];
+
+        const deckContainer = document.getElementById('certDeck');
+        let certIndex = 0;
+
+        function renderDeck() {
+            deckContainer.innerHTML = '';
+            // Render cards in reverse order so the first one is on top in z-index
+            for (let i = certificates.length - 1; i >= 0; i--) {
+                const cert = certificates[i];
+                const el = document.createElement('div');
+                el.className = 'cert-card';
+                el.innerHTML = `
+                    <i class="fas ${cert.icon} cert-icon"></i>
+                    <div class="cert-title">${cert.title}</div>
+                    <div class="cert-issuer">${cert.issuer}</div>
+                    <div class="cert-date">${cert.date}</div>
+                `;
+                
+                // Initial Stack Styles
+                const offset = i * 2; // Slight visual offset for stack effect
+                el.style.transform = `translate3d(${offset}px, ${-offset}px, -${i * 20}px)`;
+                el.style.zIndex = certificates.length - i;
+                
+                // Click Handler to "Flip"
+                el.onclick = () => flipCard(el);
+                
+                deckContainer.appendChild(el);
+            }
+        }
+
+        function flipCard(card) {
+            // Animate out to left
+            card.style.transform = 'translate3d(-150%, 0, 0) rotateY(-30deg)';
+            card.style.opacity = '0';
+            
+            // Move to back of stack after animation
+            setTimeout(() => {
+                deckContainer.prepend(card); // Move DOM element to bottom of stack
+                // Reset styles to "back of stack" position
+                card.style.transition = 'none'; // Disable transition for instant reset
+                card.style.transform = `translate3d(10px, -10px, -${certificates.length * 20}px)`; 
+                card.style.opacity = '1';
+                
+                // Re-enable transition and settle into stack
+                setTimeout(() => {
+                     card.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.6s';
+                     restackCards();
+                }, 50);
+            }, 600);
+        }
+
+        function restackCards() {
+            const cards = document.querySelectorAll('.cert-card');
+            // We need to re-assign z-indexes and transforms based on new visual order
+            // The last element in DOM is visually on TOP
+            
+            // Logic: The element at the bottom of the DOM (last child) should be front
+            // But we used prepend logic which puts 'used' cards at top of DOM (back of visual stack)
+            // Let's simplify: Just re-render visually based on current DOM order
+             Array.from(cards).forEach((card, index) => {
+                 // index 0 is back, index length-1 is front
+                 const revIndex = cards.length - 1 - index; // 0 for front, high for back
+                 
+                 card.style.zIndex = index; 
+                 const offset = revIndex * 2;
+                 card.style.transform = `translate3d(${offset}px, ${-offset}px, -${revIndex * 20}px)`;
+             });
+        }
+
+        // Initialize Deck
+        renderDeck();
+
+
+        /* ----------------------------------------------------------------
+           MAILTO FUNCTIONALITY
+        ---------------------------------------------------------------- */
+        function sendMail(event) {
+            event.preventDefault();
+            const name = document.getElementById('senderName').value;
+            const subject = document.getElementById('senderSubject').value;
+            const message = document.getElementById('senderMessage').value;
+            const body = `Name: ${name}%0D%0A%0D%0A${message}`;
+            window.location.href = `mailto:amratanshgautam@gmail.com?subject=${encodeURIComponent(subject)}&body=${body}`;
+            alert("Launching communications protocols... Please check your email client to send.");
+        }
+
+        /* ----------------------------------------------------------------
+           AUDIO & INIT
+        ---------------------------------------------------------------- */
+        let audioCtx;
+
+        function startSystem() {
+            const initScreen = document.getElementById('init-screen');
+            initScreen.style.opacity = 0;
+            setTimeout(() => initScreen.style.display = 'none', 1000);
+            
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.value = 50; 
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 200;
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.value = 0.05; 
+                osc.start();
+            } catch(e) { console.log("Audio init failed - browser policy"); }
+        }
+
+        /* ----------------------------------------------------------------
+           NAVIGATION LOGIC
+        ---------------------------------------------------------------- */
+        function toggleMenu() {
+            document.getElementById('curtain').classList.toggle('open');
+            document.querySelector('.menu-trigger').classList.toggle('active');
+        }
+
+        function navigate(sceneId) {
+            toggleMenu(); 
+            document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+            document.getElementById('stage').scrollTop = 0;
+            setTimeout(() => {
+                document.getElementById(sceneId).classList.add('active');
+            }, 600);
+        }
+
+        /* ----------------------------------------------------------------
+           CURSOR & COORDS
+        ---------------------------------------------------------------- */
+        const cursor = document.getElementById('cursor');
+        const cursorFollow = document.getElementById('cursor-follow');
+        const coordDisplay = document.getElementById('coordinates');
+
+        // Only activate custom cursor logic on devices that support hover (mouse)
+        if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+            document.addEventListener('mousemove', (e) => {
+                const x = e.clientX;
+                const y = e.clientY;
+                cursor.style.left = x + 'px';
+                cursor.style.top = y + 'px';
+                setTimeout(() => {
+                    cursorFollow.style.left = x + 'px';
+                    cursorFollow.style.top = y + 'px';
+                }, 50);
+                if(coordDisplay) {
+                    coordDisplay.innerText = `X: ${x.toString().padStart(4, '0')} // Y: ${y.toString().padStart(4, '0')}`;
+                }
+            });
+
+            document.querySelectorAll('a, button, .data-card, .cert-card').forEach(el => {
+                el.addEventListener('mouseenter', () => {
+                    cursor.style.transform = 'scale(2) rotate(45deg)';
+                    cursor.style.background = 'var(--neon)';
+                    cursorFollow.style.borderColor = 'var(--neon)';
+                    cursorFollow.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                });
+                el.addEventListener('mouseleave', () => {
+                    cursor.style.transform = 'scale(1) rotate(45deg)';
+                    cursor.style.background = 'transparent';
+                    cursorFollow.style.borderColor = 'rgba(255,255,255,0.1)';
+                    cursorFollow.style.transform = 'translate(-50%, -50%) scale(1)';
+                });
+            });
+        }
+
+        /* ----------------------------------------------------------------
+           VORTEX CANVAS ANIMATION
+        ---------------------------------------------------------------- */
+        const canvas = document.getElementById('vortex-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.z = Math.random() * 1000 + 500; 
+                this.size = Math.random() * 2;
+            }
+            update() {
+                this.z -= 5;
+                if(this.z <= 1) this.reset();
+            }
+            draw() {
+                const scale = 500 / this.z;
+                const x2d = (this.x - width/2) * scale + width/2;
+                const y2d = (this.y - height/2) * scale + height/2;
+                const alpha = 1 - (this.z / 1500);
+                ctx.fillStyle = `rgba(0, 243, 255, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(x2d, y2d, this.size * scale, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        for(let i=0; i<200; i++) particles.push(new Particle());
+
+        function animate() {
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
+            ctx.fillRect(0, 0, width, height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+    </script>
+</body>
+</html>
